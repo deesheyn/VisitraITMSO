@@ -34,9 +34,8 @@ class MainActivity : ComponentActivity() {
                         LoginVisitScreen(navController)
                     }
 
-                    // 🔥 FIX: USE AdminScreen (NOT AdminDashboardScreen)
                     composable("dashboard") {
-                        AdminScreen()
+                        AdminScreen(navController)
                     }
                 }
             }

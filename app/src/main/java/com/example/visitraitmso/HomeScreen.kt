@@ -1,120 +1,346 @@
 package com.visitraitmso.app
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import java.util.Calendar
 
-private val Navy = Color(0xFF0B1220)
-private val Blue1 = Color(0xFF1E3A8A)
-private val Blue2 = Color(0xFF2563EB)
-private val CardDark = Color(0xFF111827)
-private val Accent = Color(0xFF60A5FA)
+// ─────────────────────────────────────────────
+//  THEME
+// ─────────────────────────────────────────────
+
+private val BgDeep      = Color(0xFF0A0F1E)
+private val BgCard      = Color(0xFF111827)
+private val BgTopBar    = Color(0xFF0D1426)
+private val AccentBlue  = Color(0xFF5C7CFA)
+private val AccentGreen = Color(0xFF34D399)
+private val AccentAmber = Color(0xFFFBBF24)
+private val TextPrimary = Color(0xFFE0E8FF)
+private val TextMuted   = Color(0xFF6B7FC4)
+private val TextSub     = Color(0xFF4A5680)
+private val BorderColor = Color(0xFF1E2D5A)
 
 @Composable
 fun HomeScreen(navController: NavHostController) {
 
+    val currentYear = remember { Calendar.getInstance().get(Calendar.YEAR) }
+
+    // greeting based on time of day
+    val greeting = remember {
+        when (Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) {
+            in 5..11  -> "Good Morning!"
+            in 12..17 -> "Good Afternoon!"
+            else      -> "Good Evening!"
+        }
+    }
+
     Box(
-        modifier = Modifier
+        Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(Navy, Blue1, Blue2)
-                )
-            )
+            .background(BgDeep)
     ) {
 
+        // ── Subtle top accent glow ────────────
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(260.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            AccentBlue.copy(alpha = 0.08f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+
         Column(
-            modifier = Modifier
+            Modifier
                 .fillMaxSize()
-                .padding(20.dp),
-            verticalArrangement = Arrangement.Center,
+                .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
-            // 🟦 TITLE ONLY (CLEAN IDENTITY)
+            Spacer(Modifier.height(56.dp))
+
+            // ── Logo ─────────────────────────
+            Box(
+                Modifier
+                    .size(90.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .border(
+                        width = 1.dp,
+                        color = AccentBlue.copy(alpha = 0.3f),
+                        shape = RoundedCornerShape(24.dp)
+                    )
+            ) {
+                Image(
+                    painter            = painterResource(id = R.drawable.itmso_logo),
+                    contentDescription = "ITMSO Visitra Logo",
+                    contentScale       = ContentScale.Fit,
+                    modifier           = Modifier.fillMaxSize()
+                )
+            }
+
+            Spacer(Modifier.height(20.dp))
+
+            // ── App name ─────────────────────
             Text(
-                text = "VisitraITMSO",
-                color = Color.White,
+                "VisitraITMSO",
+                color      = TextPrimary,
                 fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.headlineSmall
+                fontSize   = 26.sp,
+                letterSpacing = (-0.5).sp
             )
 
-            Spacer(modifier = Modifier.height(36.dp))
+            Spacer(Modifier.height(4.dp))
 
-            // 🔘 BUTTONS (PROPER SPACING — NOT TOO CLOSE)
-            HomeButton(
-                title = "Register Student",
-                subtitle = "Create new record",
-                onClick = { navController.navigate("register") }
+            Text(
+                "Office of IT Management & Systems",
+                color     = TextMuted,
+                fontSize  = 12.sp,
+                textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(Modifier.height(6.dp))
 
-            HomeButton(
-                title = "Login Visit",
-                subtitle = "Time in / out logging",
-                onClick = { navController.navigate("login") }
+            // ── Greeting pill ─────────────────
+            Box(
+                Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(AccentBlue.copy(alpha = 0.1f))
+                    .border(1.dp, AccentBlue.copy(alpha = 0.2f), RoundedCornerShape(20.dp))
+                    .padding(horizontal = 14.dp, vertical = 5.dp)
+            ) {
+                Text(
+                    greeting,
+                    color    = AccentBlue,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            Spacer(Modifier.height(40.dp))
+
+            // ── Divider with label ────────────
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                HorizontalDivider(
+                    modifier  = Modifier.weight(1f),
+                    color     = BorderColor,
+                    thickness = 0.5.dp
+                )
+                Text(
+                    "  QUICK ACCESS  ",
+                    color         = TextSub,
+                    fontSize      = 10.sp,
+                    fontWeight    = FontWeight.SemiBold,
+                    letterSpacing = 1.sp
+                )
+                HorizontalDivider(
+                    modifier  = Modifier.weight(1f),
+                    color     = BorderColor,
+                    thickness = 0.5.dp
+                )
+            }
+
+            Spacer(Modifier.height(20.dp))
+
+            // ── Nav buttons ───────────────────
+            HomeNavButton(
+                icon       = Icons.Outlined.Add,
+                iconBg     = AccentBlue.copy(alpha = 0.15f),
+                iconTint   = AccentBlue,
+                title      = "Register",
+                subtitle   = "Add student, faculty, or external visitor",
+                badge      = null,
+                onClick    = { navController.navigate("register") }
             )
 
-            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(Modifier.height(10.dp))
 
-            HomeButton(
-                title = "Admin Dashboard",
-                subtitle = "View system records",
-                onClick = { navController.navigate("dashboard") }
+            HomeNavButton(
+                icon       = Icons.Outlined.Person,
+                iconBg     = AccentGreen.copy(alpha = 0.15f),
+                iconTint   = AccentGreen,
+                title      = "Login Visit",
+                subtitle   = "Time in / time out logging",
+                badge      = null,
+                onClick    = { navController.navigate("login") }
             )
+
+            Spacer(Modifier.height(10.dp))
+
+            HomeNavButton(
+                icon       = Icons.Outlined.Settings,
+                iconBg     = AccentAmber.copy(alpha = 0.15f),
+                iconTint   = AccentAmber,
+                title      = "Admin Dashboard",
+                subtitle   = "View records, filters, and export reports",
+                badge      = null,
+                onClick    = { navController.navigate("dashboard") }
+            )
+
+            Spacer(Modifier.weight(1f))
+
+            // ── Info strip ───────────────────
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(BgCard)
+                    .border(1.dp, BorderColor, RoundedCornerShape(12.dp))
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment     = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(
+                        "St. Bridget College Batangas",
+                        color      = TextMuted,
+                        fontSize   = 11.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        "ITMSO  ·  $currentYear",
+                        color    = TextSub,
+                        fontSize = 10.sp
+                    )
+                }
+                Box(
+                    Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(AccentBlue.copy(alpha = 0.1f))
+                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                ) {
+                    Text(
+                        "v1.0",
+                        color    = AccentBlue,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
         }
     }
 }
 
+// ─────────────────────────────────────────────
+//  NAV BUTTON
+// ─────────────────────────────────────────────
+
 @Composable
-fun HomeButton(
-    title: String,
+fun HomeNavButton(
+    icon:     ImageVector,
+    iconBg:   Color,
+    iconTint: Color,
+    title:    String,
     subtitle: String,
-    onClick: () -> Unit
+    badge:    String?,
+    onClick:  () -> Unit
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth(0.85f)
-            .height(92.dp)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = CardDark.copy(alpha = 0.95f)
-        ),
-        elevation = CardDefaults.cardElevation(6.dp)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(BgCard)
+            .border(1.dp, BorderColor, RoundedCornerShape(16.dp))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication        = null
+            ) { onClick() }
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 18.dp),
-            verticalArrangement = Arrangement.Center
+        // Icon box
+        Box(
+            Modifier
+                .size(46.dp)
+                .clip(RoundedCornerShape(13.dp))
+                .background(iconBg),
+            contentAlignment = Alignment.Center
         ) {
-
-            Text(
-                text = title,
-                color = Color.White,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = subtitle,
-                color = Accent,
-                style = MaterialTheme.typography.bodySmall
+            Icon(
+                icon,
+                contentDescription = null,
+                tint     = iconTint,
+                modifier = Modifier.size(22.dp)
             )
         }
+
+        Spacer(Modifier.width(14.dp))
+
+        // Text
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    title,
+                    color      = Color(0xFFE0E8FF),
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize   = 14.sp
+                )
+                if (badge != null) {
+                    Spacer(Modifier.width(8.dp))
+                    Box(
+                        Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(iconTint.copy(alpha = 0.15f))
+                            .padding(horizontal = 7.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            badge,
+                            color    = iconTint,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(2.dp))
+            Text(
+                subtitle,
+                color    = Color(0xFF4A5680),
+                fontSize = 11.sp,
+                lineHeight = 15.sp
+            )
+        }
+
+        Spacer(Modifier.width(8.dp))
+
+        // Arrow
+        Text(
+            ">",
+            color      = BorderColor,
+            fontSize   = 18.sp,
+            fontWeight = FontWeight.Light
+        )
     }
 }

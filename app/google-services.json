@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "174291495141",
+    "project_id": "visitraitmso",
+    "storage_bucket": "visitraitmso.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:174291495141:android:f1aa5aed5e59a593d80c0c",
+        "android_client_info": {
+          "package_name": "com.visitraitmso.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDE1Lgpn3C2liuazCBZdviAD304_qzucmE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
