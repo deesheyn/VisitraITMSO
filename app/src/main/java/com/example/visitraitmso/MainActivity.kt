@@ -12,6 +12,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Initialize Firestore listeners
+        AppStorage.initFirestore()
+
         setContent {
             MaterialTheme {
 

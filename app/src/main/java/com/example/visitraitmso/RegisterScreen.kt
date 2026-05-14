@@ -1,10 +1,8 @@
 package com.visitraitmso.app
 
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,13 +17,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
-import com.google.firebase.auth.FirebaseAuth
 
 private val BgDeep       = Color(0xFF0A0F1E)
 private val BgCard       = Color(0xFF111827)
@@ -35,7 +30,6 @@ private val AccentBlue   = Color(0xFF5C7CFA)
 private val AccentGreen  = Color(0xFF10B981)
 private val AccentPurple = Color(0xFF8B5CF6)
 private val AccentAmber  = Color(0xFFF59E0B)
-private val AccentRed    = Color(0xFFEF4444)
 private val TextPrimary  = Color(0xFFE0E8FF)
 private val TextMuted    = Color(0xFF6B7FC4)
 private val TextSub      = Color(0xFF4A5680)
@@ -44,14 +38,8 @@ private val BorderColor  = Color(0xFF1E2D5A)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(navController: NavHostController) {
-    val context = LocalContext.current
-    val auth = FirebaseAuth.getInstance()
 
     var registerTab by remember { mutableStateOf(0) }
-
-    // Firebase Auth States
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
 
     // Profile States
     var studentName by remember { mutableStateOf("") }
@@ -73,7 +61,6 @@ fun RegisterScreen(navController: NavHostController) {
     var isLoading    by remember { mutableStateOf(false) }
 
     fun resetAll() {
-        email = ""; password = ""
         studentName  = ""; studentId   = ""; course     = ""; yearLevel  = ""
         facultyName  = ""; employeeId  = ""; department = ""
         extName      = ""; extOrg      = ""
@@ -86,7 +73,7 @@ fun RegisterScreen(navController: NavHostController) {
         else -> AccentAmber
     }
 
-    val canSave = agreed && email.contains("@") && password.length >= 6 && when (registerTab) {
+    val canSave = agreed && when (registerTab) {
         0    -> studentName.isNotBlank() && studentId.isNotBlank()
         1    -> facultyName.isNotBlank() && employeeId.isNotBlank() && department.isNotBlank()
         else -> extName.isNotBlank()
@@ -146,12 +133,6 @@ fun RegisterScreen(navController: NavHostController) {
             Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // ── CREDENTIALS ──────────────────
-            RegSection(title = "Login Credentials", accent = tabAccent) {
-                RegField(email, { email = it }, "Email Address", Icons.Outlined.Email, "example@sbc.edu.ph", fieldColors)
-                RegField(password, { password = it }, "Password", Icons.Outlined.Lock, "Min. 6 characters", fieldColors, PasswordVisualTransformation())
-            }
-
             // ── PROFILE DATA ─────────────────
             if (registerTab == 0) {
                 RegSection(title = "Student Details", accent = AccentBlue) {
@@ -220,20 +201,15 @@ fun RegisterScreen(navController: NavHostController) {
                     onClick = {
                         if (!canSave) return@Button
                         isLoading = true
-                        auth.createUserWithEmailAndPassword(email.trim(), password.trim())
-                            .addOnCompleteListener { task ->
-                                isLoading = false
-                                if (task.isSuccessful) {
-                                    // Save to memory for session lookup
-                                    when (registerTab) {
-                                        0 -> AppStorage.students.add(Student(studentName, studentId, studentType, course, yearLevel))
-                                        1 -> AppStorage.faculties.add(Faculty(facultyName, employeeId, department))
-                                    }
-                                    showDialog = true
-                                } else {
-                                    Toast.makeText(context, "Registration Error: ${task.exception?.message}", Toast.LENGTH_LONG).show()
-                                }
-                            }
+                        
+                        // Save directly to Firestore
+                        when (registerTab) {
+                            0 -> AppStorage.saveStudent(Student(studentName, studentId, studentType, course, yearLevel))
+                            1 -> AppStorage.saveFaculty(Faculty(facultyName, employeeId, department))
+                        }
+                        
+                        isLoading = false
+                        showDialog = true
                     },
                     enabled = canSave && !isLoading,
                     modifier = Modifier.fillMaxWidth().height(52.dp),
@@ -241,7 +217,7 @@ fun RegisterScreen(navController: NavHostController) {
                     shape = RoundedCornerShape(14.dp)
                 ) {
                     if (isLoading) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                    else Text("CREATE ACCOUNT", fontWeight = FontWeight.Bold)
+                    else Text("REGISTER PROFILE", fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -256,8 +232,8 @@ fun RegisterScreen(navController: NavHostController) {
                     navController.navigate("home") { popUpTo("home") { inclusive = true } }
                 }, colors = ButtonDefaults.buttonColors(containerColor = tabAccent)) { Text("Back to Home") }
             },
-            title = { Text("Account Created!", color = TextPrimary) },
-            text = { Text("You can now use your email to log in to the system services.", color = TextMuted) },
+            title = { Text("Profile Registered!", color = TextPrimary) },
+            text = { Text("Information has been successfully saved to the system.", color = TextMuted) },
             containerColor = BgCard
         )
     }

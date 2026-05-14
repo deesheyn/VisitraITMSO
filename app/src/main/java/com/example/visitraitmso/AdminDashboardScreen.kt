@@ -51,6 +51,7 @@ private val AccentBlue   = Color(0xFF5C7CFA)
 private val AccentGreen  = Color(0xFF10B981)
 private val AccentAmber  = Color(0xFFF59E0B)
 private val AccentRed    = Color(0xFFEF4444)
+private val AccentPurple = Color(0xFF8B5CF6)
 private val TextPrimary  = Color(0xFFE0E8FF)
 private val TextMuted    = Color(0xFF6B7FC4)
 private val TextSub      = Color(0xFF4A5680)
@@ -91,15 +92,43 @@ private fun fmtFileName(ts: Long): String {
 @Composable
 fun AdminScreen(navController: NavHostController) {
     val auth = FirebaseAuth.getInstance()
-    var loggedIn by remember { mutableStateOf(auth.currentUser != null) }
+    var loggedInUser by remember { mutableStateOf<User?>(null) }
+    var checkingAuth by remember { mutableStateOf(true) }
 
-    if (!loggedIn) {
-        AdminLogin(onLogin = { loggedIn = true }, navController = navController)
+    LaunchedEffect(Unit) {
+        val current = auth.currentUser
+        if (current != null) {
+            AppStorage.getUser(current.uid) { user ->
+                loggedInUser = user
+                checkingAuth = false
+            }
+        } else {
+            checkingAuth = false
+        }
+    }
+
+    if (checkingAuth) {
+        Box(Modifier.fillMaxSize().background(BgDeep), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = AccentBlue)
+        }
+    } else if (loggedInUser == null) {
+        AdminLogin(
+            onLogin = {
+                val current = auth.currentUser
+                if (current != null) {
+                    AppStorage.getUser(current.uid) { user ->
+                        loggedInUser = user
+                    }
+                }
+            },
+            navController = navController
+        )
     } else {
         AdminDashboard(
+            user = loggedInUser!!,
             onLogout = {
                 auth.signOut()
-                loggedIn = false
+                loggedInUser = null
                 navController.navigate("home") { popUpTo("home") { inclusive = true } }
             }
         )
@@ -201,9 +230,26 @@ fun AdminLogin(onLogin: () -> Unit, navController: NavHostController) {
                         isLoading = true
                         auth.signInWithEmailAndPassword(email.trim(), pass.trim())
                             .addOnCompleteListener { task ->
-                                isLoading = false
-                                if (task.isSuccessful) onLogin()
-                                else error = task.exception?.message ?: "Login failed"
+                                if (task.isSuccessful) {
+                                    val uid = task.result?.user?.uid ?: ""
+                                    AppStorage.getUser(uid) { user ->
+                                        isLoading = false
+                                        if (user != null && (user.role == "Admin" || user.role == "Super Admin" || user.role == "Staff")) {
+                                            onLogin()
+                                        } else if (user == null) {
+                                            // Maybe check admins collection for backward compatibility
+                                            AppStorage.getAdminUser(uid) { admin ->
+                                                if (admin != null) onLogin()
+                                                else error = "Access Denied: Unauthorized role."
+                                            }
+                                        } else {
+                                            error = "Access Denied: Unauthorized role."
+                                        }
+                                    }
+                                } else {
+                                    isLoading = false
+                                    error = task.exception?.message ?: "Login failed"
+                                }
                             }
                     },
                     modifier = Modifier.fillMaxWidth().height(50.dp),
@@ -240,9 +286,11 @@ private fun SummaryItem(label: String, value: Int, accent: Color) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AdminDashboard(onLogout: () -> Unit) {
+fun AdminDashboard(user: User, onLogout: () -> Unit) {
     val context   = LocalContext.current
     val allVisits = remember { AppStorage.visits }
+    val isSuper   = user.role == "Super Admin"
+    var currentTab by remember { mutableStateOf(0) } // 0: Visits, 1: Users (if Super Admin)
 
     fun getName(v: Visit): String = when {
         v.visitorName.isNotBlank() -> v.visitorName
@@ -277,102 +325,133 @@ fun AdminDashboard(onLogout: () -> Unit) {
         }
     }
 
-    val dateTimeStr = remember { fmtHeader(System.currentTimeMillis()) }
-
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Column {
                         Text("Admin Dashboard", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        Text(dateTimeStr, color = TextMuted, fontSize = 11.sp)
+                        Text("${user.role}: ${user.email}", color = TextMuted, fontSize = 11.sp)
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showExportDialog = true }) { Icon(Icons.Outlined.Share, null, tint = AccentBlue) }
+                    if (isSuper) {
+                        IconButton(onClick = { showExportDialog = true }) { Icon(Icons.Outlined.Share, null, tint = AccentBlue) }
+                    }
                     IconButton(onClick = onLogout) { Icon(Icons.AutoMirrored.Outlined.ExitToApp, null, tint = AccentRed) }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = BgTopBar)
             )
         },
+        bottomBar = {
+            if (isSuper) {
+                NavigationBar(containerColor = BgTopBar) {
+                    NavigationBarItem(
+                        selected = currentTab == 0,
+                        onClick = { currentTab = 0 },
+                        icon = { Icon(Icons.Outlined.List, null) },
+                        label = { Text("Visits") },
+                        colors = NavigationBarItemDefaults.colors(selectedIconColor = AccentBlue, selectedTextColor = AccentBlue, unselectedIconColor = TextMuted, unselectedTextColor = TextMuted)
+                    )
+                    NavigationBarItem(
+                        selected = currentTab == 1,
+                        onClick = { currentTab = 1 },
+                        icon = { Icon(Icons.Outlined.Person, null) },
+                        label = { Text("Users") },
+                        colors = NavigationBarItemDefaults.colors(selectedIconColor = AccentPurple, selectedTextColor = AccentPurple, unselectedIconColor = TextMuted, unselectedTextColor = TextMuted)
+                    )
+                }
+            }
+        },
         containerColor = BgDeep
     ) { p ->
         Column(Modifier.padding(p).fillMaxSize().padding(16.dp)) {
-            // Summary Cards
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Card(
-                    Modifier.weight(1f),
-                    colors = CardDefaults.cardColors(containerColor = BgCard),
-                    border = BorderStroke(1.dp, BorderColor),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
+            if (currentTab == 0) {
+                // VISITS TAB
+                // Summary Cards
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Card(
+                        Modifier.weight(1f),
+                        colors = CardDefaults.cardColors(containerColor = BgCard),
+                        border = BorderStroke(1.dp, BorderColor),
+                        shape = RoundedCornerShape(16.dp)
                     ) {
-                        SummaryItem("TOTAL", allVisits.size, TextPrimary)
-                        Spacer(Modifier.weight(1f))
-                        SummaryItem("ACTIVE", allVisits.count { it.timeOut == null }, AccentGreen)
-                        Spacer(Modifier.weight(1f))
-                        SummaryItem("DONE", allVisits.count { it.timeOut != null }, AccentAmber)
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            // Filters
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = search, onValueChange = { search = it },
-                    placeholder = { Text("Search name/ID...", color = TextSub, fontSize = 13.sp) },
-                    modifier = Modifier.weight(1.5f),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = adminFieldColors(),
-                    leadingIcon = { Icon(Icons.Outlined.Search, null, tint = TextSub, modifier = Modifier.size(18.dp)) },
-                    singleLine = true
-                )
-            }
-
-            Spacer(Modifier.height(10.dp))
-
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                AdminDateButton(Modifier.weight(1f), if (dateFrom.isEmpty()) "From Date" else dateFrom, dateFrom.isNotEmpty(), { showFromPicker = true }, { dateFrom = "" })
-                AdminDateButton(Modifier.weight(1f), if (dateTo.isEmpty()) "To Date" else dateTo, dateTo.isNotEmpty(), { showToPicker = true }, { dateTo = "" })
-            }
-
-            Spacer(Modifier.height(10.dp))
-
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                // Status Filter
-                Box(Modifier.weight(1f)) {
-                    AdminFilterChip("Status: $statusFilter", statusExpanded) { statusExpanded = true }
-                    DropdownMenu(statusExpanded, { statusExpanded = false }, Modifier.background(BgCard)) {
-                        listOf("All", "Active", "Done").forEach {
-                            DropdownMenuItem(text = { Text(it, color = TextPrimary) }, onClick = { statusFilter = it; statusExpanded = false })
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            SummaryItem("TOTAL", allVisits.size, TextPrimary)
+                            Spacer(Modifier.weight(1f))
+                            SummaryItem("ACTIVE", allVisits.count { it.timeOut == null }, AccentGreen)
+                            Spacer(Modifier.weight(1f))
+                            SummaryItem("DONE", allVisits.count { it.timeOut != null }, AccentAmber)
                         }
                     }
                 }
-                // Type Filter
-                Box(Modifier.weight(1f)) {
-                    AdminFilterChip("Type: $typeFilter", typeExpanded) { typeExpanded = true }
-                    DropdownMenu(typeExpanded, { typeExpanded = false }, Modifier.background(BgCard)) {
-                        listOf("All", "Student", "Visitor").forEach {
-                            DropdownMenuItem(text = { Text(it, color = TextPrimary) }, onClick = { typeFilter = it; typeExpanded = false })
+
+                Spacer(Modifier.height(16.dp))
+
+                // Filters
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = search, onValueChange = { search = it },
+                        placeholder = { Text("Search name/ID...", color = TextSub, fontSize = 13.sp) },
+                        modifier = Modifier.weight(1.5f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = adminFieldColors(),
+                        leadingIcon = { Icon(Icons.Outlined.Search, null, tint = TextSub, modifier = Modifier.size(18.dp)) },
+                        singleLine = true
+                    )
+                }
+
+                Spacer(Modifier.height(10.dp))
+
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AdminDateButton(Modifier.weight(1f), if (dateFrom.isEmpty()) "From Date" else dateFrom, dateFrom.isNotEmpty(), { showFromPicker = true }, { dateFrom = "" })
+                    AdminDateButton(Modifier.weight(1f), if (dateTo.isEmpty()) "To Date" else dateTo, dateTo.isNotEmpty(), { showToPicker = true }, { dateTo = "" })
+                }
+
+                Spacer(Modifier.height(10.dp))
+
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Status Filter
+                    Box(Modifier.weight(1f)) {
+                        AdminFilterChip("Status: $statusFilter", statusExpanded) { statusExpanded = true }
+                        DropdownMenu(statusExpanded, { statusExpanded = false }, Modifier.background(BgCard)) {
+                            listOf("All", "Active", "Done").forEach {
+                                DropdownMenuItem(text = { Text(it, color = TextPrimary) }, onClick = { statusFilter = it; statusExpanded = false })
+                            }
+                        }
+                    }
+                    // Type Filter
+                    Box(Modifier.weight(1f)) {
+                        AdminFilterChip("Type: $typeFilter", typeExpanded) { typeExpanded = true }
+                        DropdownMenu(typeExpanded, { typeExpanded = false }, Modifier.background(BgCard)) {
+                            listOf("All", "Student", "Visitor").forEach {
+                                DropdownMenuItem(text = { Text(it, color = TextPrimary) }, onClick = { typeFilter = it; typeExpanded = false })
+                            }
                         }
                     }
                 }
-            }
 
-            Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(16.dp))
 
-            Text("Records (${filtered.size})", color = TextMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp))
+                Text("Records (${filtered.size})", color = TextMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(8.dp))
 
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxSize()) {
-                items(filtered.reversed()) { v ->
-                    AdminVisitRow(v, getName(v), onDelete = { visitToDelete = v; showDeleteDialog = true })
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxSize()) {
+                    items(filtered.reversed()) { v ->
+                        AdminVisitRow(
+                            visit = v,
+                            name = getName(v),
+                            canDelete = isSuper,
+                            onDelete = { visitToDelete = v; showDeleteDialog = true }
+                        )
+                    }
                 }
+            } else {
+                // USERS TAB (Role Based Access Management)
+                UserManagementSection()
             }
         }
     }
@@ -410,7 +489,7 @@ fun AdminDashboard(onLogout: () -> Unit) {
             text = { Text("Are you sure you want to delete this record for ${visitToDelete?.let { getName(it) }}?", color = TextMuted) },
             confirmButton = {
                 Button(onClick = {
-                    visitToDelete?.let { AppStorage.visits.remove(it) }
+                    visitToDelete?.let { AppStorage.deleteVisit(it) }
                     showDeleteDialog = false
                 }, colors = ButtonDefaults.buttonColors(containerColor = AccentRed)) { Text("Delete") }
             },
@@ -436,6 +515,88 @@ fun AdminDashboard(onLogout: () -> Unit) {
 }
 
 @Composable
+fun UserManagementSection() {
+    val users = AppStorage.users
+    var userToEdit by remember { mutableStateOf<User?>(null) }
+    var showEditRoleDialog by remember { mutableStateOf(false) }
+
+    Column(Modifier.fillMaxSize()) {
+        Text("User Management", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+        Text("Manage system access and roles", color = TextMuted, fontSize = 13.sp)
+
+        Spacer(Modifier.height(16.dp))
+
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            items(users) { u ->
+                UserRow(u, onEditRole = {
+                    userToEdit = u
+                    showEditRoleDialog = true
+                })
+            }
+        }
+    }
+
+    if (showEditRoleDialog && userToEdit != null) {
+        var selectedRole by remember { mutableStateOf(userToEdit!!.role) }
+        val roles = listOf("User", "Staff", "Admin", "Super Admin")
+
+        AlertDialog(
+            onDismissRequest = { showEditRoleDialog = false },
+            containerColor = BgCard,
+            title = { Text("Edit Role: ${userToEdit!!.name}", color = TextPrimary) },
+            text = {
+                Column {
+                    roles.forEach { role ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth().clickable { selectedRole = role }.padding(vertical = 8.dp)
+                        ) {
+                            RadioButton(selected = (selectedRole == role), onClick = { selectedRole = role })
+                            Text(role, color = TextPrimary, modifier = Modifier.padding(start = 8.dp))
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    AppStorage.saveUser(userToEdit!!.copy(role = selectedRole))
+                    showEditRoleDialog = false
+                }, colors = ButtonDefaults.buttonColors(containerColor = AccentBlue)) { Text("Save") }
+            },
+            dismissButton = { TextButton(onClick = { showEditRoleDialog = false }) { Text("Cancel") } }
+        )
+    }
+}
+
+@Composable
+fun UserRow(user: User, onEditRole: () -> Unit) {
+    Card(colors = CardDefaults.cardColors(containerColor = BgCard), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(user.name.ifBlank { "No Name" }, color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                Text(user.email, color = TextMuted, fontSize = 12.sp)
+                Spacer(Modifier.height(4.dp))
+                RoleBadge(user.role)
+            }
+            IconButton(onClick = onEditRole) { Icon(Icons.Outlined.Edit, null, tint = AccentBlue) }
+        }
+    }
+}
+
+@Composable
+fun RoleBadge(role: String) {
+    val color = when(role) {
+        "Super Admin" -> AccentRed
+        "Admin"       -> AccentAmber
+        "Staff"       -> AccentGreen
+        else          -> AccentBlue
+    }
+    Box(Modifier.clip(RoundedCornerShape(4.dp)).background(color.copy(0.15f)).padding(horizontal = 6.dp, vertical = 2.dp)) {
+        Text(role, color = color, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
 private fun AdminFilterChip(label: String, expanded: Boolean, onClick: () -> Unit) {
     Box(
         Modifier
@@ -454,7 +615,7 @@ private fun AdminFilterChip(label: String, expanded: Boolean, onClick: () -> Uni
 }
 
 @Composable
-fun AdminVisitRow(visit: Visit, name: String, onDelete: () -> Unit) {
+fun AdminVisitRow(visit: Visit, name: String, canDelete: Boolean, onDelete: () -> Unit) {
     val isActive = visit.timeOut == null
     Card(colors = CardDefaults.cardColors(containerColor = BgCard), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp)) {
@@ -464,8 +625,12 @@ fun AdminVisitRow(visit: Visit, name: String, onDelete: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(name, color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                AdminStatusBadge(isActive)
-                IconButton(onClick = onDelete) { Icon(Icons.Outlined.Delete, null, tint = AccentRed, modifier = Modifier.size(18.dp)) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    AdminStatusBadge(isActive)
+                    if (canDelete) {
+                        IconButton(onClick = onDelete) { Icon(Icons.Outlined.Delete, null, tint = AccentRed, modifier = Modifier.size(18.dp)) }
+                    }
+                }
             }
             Text("ID: ${visit.studentId} · ${visit.visitorType}", color = TextSub, fontSize = 11.sp)
             Text(visit.purpose, color = TextMuted, fontSize = 12.sp)

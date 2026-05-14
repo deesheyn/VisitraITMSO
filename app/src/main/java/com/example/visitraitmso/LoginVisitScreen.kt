@@ -517,7 +517,7 @@ fun LoginVisitScreen(navController: NavHostController) {
                             timeIn  = now
                             timeOut = null
 
-                            AppStorage.visits.add(
+                            AppStorage.saveVisit(
                                 Visit(
                                     studentId   = id,
                                     purpose     = finalPurpose,
@@ -556,13 +556,14 @@ fun LoginVisitScreen(navController: NavHostController) {
                                 }?.studentId ?: ""
                             } else visitorId
 
-                            val index = AppStorage.visits.indexOfLast {
+                            val visitToUpdate = AppStorage.visits.findLast {
                                 it.studentId == id && it.timeOut == null
                             }
-                            if (index != -1) {
-                                val old = AppStorage.visits[index]
-                                AppStorage.visits[index] = old.copy(timeOut = now)
+                            
+                            if (visitToUpdate != null) {
+                                AppStorage.saveVisit(visitToUpdate.copy(timeOut = now))
                             }
+
                             resetAll()
                             showSuccess = true
                         },
