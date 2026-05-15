@@ -18,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -26,6 +27,10 @@ import androidx.navigation.NavHostController
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.*
+
+// ─────────────────────────────────────────────
+//  THEME
+// ─────────────────────────────────────────────
 
 private val BgDeep       = Color(0xFF0A0F1E)
 private val BgCard       = Color(0xFF111827)
@@ -41,7 +46,10 @@ private val TextMuted    = Color(0xFF6B7FC4)
 private val TextSub      = Color(0xFF4A5680)
 private val BorderColor  = Color(0xFF1E2D5A)
 
-// ── TIMEZONE FIX ─────────────────────────────
+// ─────────────────────────────────────────────
+//  TIMEZONE
+// ─────────────────────────────────────────────
+
 private val PH_TIMEZONE = TimeZone.getTimeZone("Asia/Manila")
 
 private fun formatTime(ts: Long): String {
@@ -62,6 +70,10 @@ private fun isSameDay(t1: Long, t2: Long): Boolean {
     return c1.get(Calendar.YEAR)        == c2.get(Calendar.YEAR) &&
             c1.get(Calendar.DAY_OF_YEAR) == c2.get(Calendar.DAY_OF_YEAR)
 }
+
+// ─────────────────────────────────────────────
+//  SCREEN
+// ─────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -151,8 +163,8 @@ fun LoginVisitScreen(navController: NavHostController) {
     val fieldColors = OutlinedTextFieldDefaults.colors(
         focusedTextColor        = TextPrimary,
         unfocusedTextColor      = TextPrimary,
-        cursorColor             = AccentBlue,
-        focusedBorderColor      = AccentBlue,
+        cursorColor             = tabAccent,
+        focusedBorderColor      = tabAccent,
         unfocusedBorderColor    = BorderColor,
         focusedContainerColor   = BgInput,
         unfocusedContainerColor = BgInput
@@ -161,78 +173,119 @@ fun LoginVisitScreen(navController: NavHostController) {
     Column(Modifier.fillMaxSize().background(BgDeep)) {
 
         // ── TOP BAR ──────────────────────────
-        Row(
+        Column(
             Modifier
                 .fillMaxWidth()
                 .background(BgTopBar)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
+            // Title row
+            Row(
                 Modifier
-                    .size(30.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(BorderColor)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication        = null
-                    ) { navController.navigate("home") },
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    Icons.Default.ArrowBack,
-                    contentDescription = "Back",
-                    tint     = TextMuted,
-                    modifier = Modifier.size(15.dp)
-                )
-            }
-            Spacer(Modifier.width(10.dp))
-            Column {
-                Text(
-                    "Visit Logging",
-                    color      = TextPrimary,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize   = 14.sp
-                )
-                Text(
-                    "Student · Faculty · External",
-                    color    = TextMuted,
-                    fontSize = 10.sp
-                )
-            }
-        }
-
-        // ── VISITOR TYPE TABS ─────────────────
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .background(BgTopBar)
-                .padding(horizontal = 12.dp)
-                .padding(bottom = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            listOf("Student", "Faculty", "External").forEachIndexed { i, label ->
-                val selected = visitorTab == i
-                val accent   = when (i) { 0 -> AccentBlue; 1 -> AccentPurple; else -> AccentAmber }
                 Box(
                     Modifier
-                        .weight(1f)
+                        .size(30.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(if (selected) accent else BgCard)
-                        .border(1.dp, if (selected) accent else BorderColor, RoundedCornerShape(8.dp))
+                        .background(BorderColor)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication        = null
-                        ) { visitorTab = i; resetAll() }
-                        .padding(vertical = 8.dp),
+                        ) { navController.navigate("home") },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        label,
-                        color      = if (selected) Color.White else TextMuted,
-                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                        fontSize   = 12.sp
+                    Icon(
+                        Icons.Default.ArrowBack,
+                        contentDescription = "Back",
+                        tint     = TextMuted,
+                        modifier = Modifier.size(15.dp)
                     )
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "Visit Logging",
+                        color      = TextPrimary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize   = 15.sp
+                    )
+                    Text(
+                        "St. Bridget College Batangas · ITMSO",
+                        color    = TextMuted,
+                        fontSize = 10.sp
+                    )
+                }
+                // Session status indicator
+                if (timeIn != null) {
+                    Box(
+                        Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(AccentGreen.copy(alpha = 0.15f))
+                            .border(1.dp, AccentGreen.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                Modifier
+                                    .size(6.dp)
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(AccentGreen)
+                            )
+                            Spacer(Modifier.width(5.dp))
+                            Text(
+                                "ACTIVE",
+                                color      = AccentGreen,
+                                fontSize   = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Visitor type tabs
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                listOf(
+                    Triple("Student",  AccentBlue,   0),
+                    Triple("Faculty",  AccentPurple, 1),
+                    Triple("External", AccentAmber,  2)
+                ).forEach { (label, accent, idx) ->
+                    val selected = visitorTab == idx
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(
+                                if (selected) accent
+                                else BgCard
+                            )
+                            .border(
+                                1.dp,
+                                if (selected) accent else BorderColor,
+                                RoundedCornerShape(10.dp)
+                            )
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication        = null
+                            ) { visitorTab = idx; resetAll() }
+                            .padding(vertical = 9.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            label,
+                            color      = if (selected) Color.White else TextMuted,
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                            fontSize   = 12.sp
+                        )
+                    }
                 }
             }
         }
@@ -242,14 +295,14 @@ fun LoginVisitScreen(navController: NavHostController) {
             Modifier
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 12.dp)
-                .padding(top = 10.dp, bottom = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(horizontal = 14.dp)
+                .padding(top = 12.dp, bottom = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
 
             // ══ STUDENT TAB ══════════════════
             if (visitorTab == 0) {
-                CompactSection(title = "Student Lookup", accent = AccentBlue) {
+                VisitCard(title = "Student Lookup", accent = AccentBlue) {
 
                     OutlinedTextField(
                         value         = studentId,
@@ -271,21 +324,48 @@ fun LoginVisitScreen(navController: NavHostController) {
                     )
 
                     if (studentSuggestions.isNotEmpty() && student == null) {
-                        SuggestionList(accent = AccentBlue) {
+                        Column(
+                            Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(BgInput)
+                                .border(1.dp, BorderColor, RoundedCornerShape(10.dp))
+                        ) {
                             studentSuggestions.forEachIndexed { idx, s ->
-                                SuggestionItem(
-                                    name        = s.name,
-                                    subLabel    = s.studentId,
-                                    accent      = AccentBlue,
-                                    onClick     = { studentId = s.studentId },
-                                    showDivider = idx < studentSuggestions.lastIndex
-                                )
+                                Row(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .clickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication        = null
+                                        ) { studentId = s.studentId }
+                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        Modifier
+                                            .size(30.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(AccentBlue.copy(alpha = 0.15f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(Icons.Outlined.Person, null, tint = AccentBlue, modifier = Modifier.size(15.dp))
+                                    }
+                                    Spacer(Modifier.width(10.dp))
+                                    Column {
+                                        Text(s.name, color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                                        Text(s.studentId, color = TextSub, fontSize = 10.sp)
+                                    }
+                                }
+                                if (idx < studentSuggestions.lastIndex) {
+                                    HorizontalDivider(color = BorderColor, thickness = 0.5.dp)
+                                }
                             }
                         }
                     }
 
                     student?.let { s ->
-                        MatchedPersonCard(
+                        PersonCard(
                             initial  = s.name.take(1).uppercase(),
                             name     = s.name,
                             detail   = if (!s.course.isNullOrBlank()) s.course
@@ -300,7 +380,7 @@ fun LoginVisitScreen(navController: NavHostController) {
 
             // ══ FACULTY TAB ══════════════════
             if (visitorTab == 1) {
-                CompactSection(title = "Faculty Lookup", accent = AccentPurple) {
+                VisitCard(title = "Faculty Lookup", accent = AccentPurple) {
 
                     OutlinedTextField(
                         value         = employeeId,
@@ -322,21 +402,48 @@ fun LoginVisitScreen(navController: NavHostController) {
                     )
 
                     if (facultySuggestions.isNotEmpty() && faculty == null) {
-                        SuggestionList(accent = AccentPurple) {
+                        Column(
+                            Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(BgInput)
+                                .border(1.dp, BorderColor, RoundedCornerShape(10.dp))
+                        ) {
                             facultySuggestions.forEachIndexed { idx, f ->
-                                SuggestionItem(
-                                    name        = f.name,
-                                    subLabel    = f.employeeId,
-                                    accent      = AccentPurple,
-                                    onClick     = { employeeId = f.employeeId },
-                                    showDivider = idx < facultySuggestions.lastIndex
-                                )
+                                Row(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .clickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication        = null
+                                        ) { employeeId = f.employeeId }
+                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        Modifier
+                                            .size(30.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(AccentPurple.copy(alpha = 0.15f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(Icons.Outlined.Person, null, tint = AccentPurple, modifier = Modifier.size(15.dp))
+                                    }
+                                    Spacer(Modifier.width(10.dp))
+                                    Column {
+                                        Text(f.name, color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                                        Text(f.employeeId, color = TextSub, fontSize = 10.sp)
+                                    }
+                                }
+                                if (idx < facultySuggestions.lastIndex) {
+                                    HorizontalDivider(color = BorderColor, thickness = 0.5.dp)
+                                }
                             }
                         }
                     }
 
                     faculty?.let { f ->
-                        MatchedPersonCard(
+                        PersonCard(
                             initial  = f.name.take(1).uppercase(),
                             name     = f.name,
                             detail   = f.department,
@@ -349,7 +456,7 @@ fun LoginVisitScreen(navController: NavHostController) {
 
             // ══ EXTERNAL TAB ═════════════════
             if (visitorTab == 2) {
-                CompactSection(title = "Visitor Information", accent = AccentAmber) {
+                VisitCard(title = "Visitor Information", accent = AccentAmber) {
 
                     OutlinedTextField(
                         value         = extName,
@@ -396,8 +503,7 @@ fun LoginVisitScreen(navController: NavHostController) {
             }
 
             // ══ PURPOSE ══════════════════════
-            CompactSection(title = "Visit Purpose", accent = tabAccent) {
-
+            VisitCard(title = "Visit Purpose", accent = tabAccent) {
                 ExposedDropdownMenuBox(
                     expanded         = expanded,
                     onExpandedChange = { expanded = !expanded }
@@ -443,15 +549,22 @@ fun LoginVisitScreen(navController: NavHostController) {
                 }
             }
 
-            // ── ACTIVE SESSION BANNER ─────────
+            // ── ACTIVE SESSION CARD ───────────
             if (timeIn != null) {
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(AccentGreen.copy(alpha = 0.08f))
-                        .border(1.dp, AccentGreen.copy(alpha = 0.25f), RoundedCornerShape(10.dp))
-                        .padding(10.dp),
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(
+                                    AccentGreen.copy(alpha = 0.12f),
+                                    AccentGreen.copy(alpha = 0.04f)
+                                )
+                            )
+                        )
+                        .border(1.dp, AccentGreen.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                        .padding(14.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment     = Alignment.CenterVertically
                 ) {
@@ -459,49 +572,57 @@ fun LoginVisitScreen(navController: NavHostController) {
                         Text(
                             "Session Active",
                             color      = AccentGreen,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize   = 12.sp
+                            fontWeight = FontWeight.Bold,
+                            fontSize   = 13.sp
                         )
+                        Spacer(Modifier.height(2.dp))
                         Text(
-                            "Time In: ${formatDateTime(timeIn!!)}",
+                            formatDateTime(timeIn!!),
                             color    = TextMuted,
                             fontSize = 11.sp
                         )
                         Text(
-                            "Visitor: $visitorName",
-                            color    = TextSub,
-                            fontSize = 10.sp
+                            visitorName,
+                            color      = TextPrimary,
+                            fontSize   = 12.sp,
+                            fontWeight = FontWeight.Medium
                         )
                     }
-                    Box(
-                        Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(AccentGreen.copy(alpha = 0.15f))
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            "ACTIVE",
-                            color      = AccentGreen,
-                            fontSize   = 10.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                    Column(horizontalAlignment = Alignment.End) {
+                        Box(
+                            Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(AccentGreen.copy(alpha = 0.15f))
+                                .padding(horizontal = 10.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                visitorType,
+                                color      = AccentGreen,
+                                fontSize   = 10.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
                     }
                 }
             }
         }
 
         // ── STICKY BUTTONS ────────────────────
-        Surface(color = BgTopBar, tonalElevation = 0.dp) {
+        Surface(
+            color          = BgTopBar,
+            tonalElevation = 0.dp
+        ) {
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Row(
                     Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
+                    // TIME IN
                     Button(
                         onClick = {
                             val now = System.currentTimeMillis()
@@ -529,26 +650,36 @@ fun LoginVisitScreen(navController: NavHostController) {
                             )
                         },
                         enabled  = canTimeIn,
-                        modifier = Modifier.weight(1f).height(46.dp),
+                        modifier = Modifier.weight(1f).height(50.dp),
                         colors   = ButtonDefaults.buttonColors(
                             containerColor         = AccentGreen,
-                            disabledContainerColor = AccentGreen.copy(alpha = 0.25f)
+                            disabledContainerColor = AccentGreen.copy(alpha = 0.2f)
                         ),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(14.dp)
                     ) {
-                        Text(
-                            "TIME IN",
-                            color         = Color.White,
-                            fontWeight    = FontWeight.Bold,
-                            fontSize      = 13.sp,
-                            letterSpacing = 1.sp
-                        )
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                "TIME IN",
+                                color         = Color.White,
+                                fontWeight    = FontWeight.Bold,
+                                fontSize      = 13.sp,
+                                letterSpacing = 1.sp
+                            )
+                            if (canTimeIn) {
+                                Text(
+                                    formatTime(System.currentTimeMillis()),
+                                    color    = Color.White.copy(alpha = 0.7f),
+                                    fontSize = 9.sp
+                                )
+                            }
+                        }
                     }
 
+                    // TIME OUT
                     Button(
                         onClick = {
-                            val now   = System.currentTimeMillis()
-                            val id    = if (visitorTab == 2) {
+                            val now = System.currentTimeMillis()
+                            val id  = if (visitorTab == 2) {
                                 AppStorage.visits.lastOrNull {
                                     it.visitorType == "External" &&
                                             it.visitorName.startsWith(extName) &&
@@ -559,38 +690,45 @@ fun LoginVisitScreen(navController: NavHostController) {
                             val visitToUpdate = AppStorage.visits.findLast {
                                 it.studentId == id && it.timeOut == null
                             }
-                            
                             if (visitToUpdate != null) {
                                 AppStorage.saveVisit(visitToUpdate.copy(timeOut = now))
                             }
-
                             resetAll()
                             showSuccess = true
                         },
                         enabled  = canTimeOut,
-                        modifier = Modifier.weight(1f).height(46.dp),
+                        modifier = Modifier.weight(1f).height(50.dp),
                         colors   = ButtonDefaults.buttonColors(
                             containerColor         = AccentRed,
-                            disabledContainerColor = AccentRed.copy(alpha = 0.25f)
+                            disabledContainerColor = AccentRed.copy(alpha = 0.2f)
                         ),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(14.dp)
                     ) {
-                        Text(
-                            "TIME OUT",
-                            color         = Color.White,
-                            fontWeight    = FontWeight.Bold,
-                            fontSize      = 13.sp,
-                            letterSpacing = 1.sp
-                        )
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                "TIME OUT",
+                                color         = Color.White,
+                                fontWeight    = FontWeight.Bold,
+                                fontSize      = 13.sp,
+                                letterSpacing = 1.sp
+                            )
+                            if (canTimeOut) {
+                                Text(
+                                    "Tap to end session",
+                                    color    = Color.White.copy(alpha = 0.7f),
+                                    fontSize = 9.sp
+                                )
+                            }
+                        }
                     }
                 }
 
                 Text(
                     when {
-                        timeIn != null  -> "Session active — tap Time Out to end"
-                        visitorTab == 0 -> "Enter Student ID and purpose to time in"
-                        visitorTab == 1 -> "Enter Employee ID and purpose to time in"
-                        else            -> "Enter visitor name and purpose to time in"
+                        timeIn != null  -> "Session active since ${formatTime(timeIn!!)} — tap Time Out to end"
+                        visitorTab == 0 -> "Enter Student ID and select a purpose to time in"
+                        visitorTab == 1 -> "Enter Employee ID and select a purpose to time in"
+                        else            -> "Enter visitor name and select a purpose to time in"
                     },
                     color    = TextSub,
                     fontSize = 10.sp,
@@ -603,34 +741,46 @@ fun LoginVisitScreen(navController: NavHostController) {
     // ── SUCCESS OVERLAY ───────────────────────
     if (showSuccess) {
         Box(
-            Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.6f)),
+            Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.65f)),
             contentAlignment = Alignment.Center
         ) {
             Column(
                 Modifier
-                    .clip(RoundedCornerShape(20.dp))
+                    .padding(40.dp)
+                    .clip(RoundedCornerShape(24.dp))
                     .background(BgCard)
-                    .padding(28.dp),
+                    .padding(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Box(
                     Modifier
-                        .size(52.dp)
-                        .clip(RoundedCornerShape(14.dp))
+                        .size(64.dp)
+                        .clip(RoundedCornerShape(18.dp))
                         .background(AccentGreen.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("✓", color = AccentGreen, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    Text("✓", color = AccentGreen, fontSize = 28.sp, fontWeight = FontWeight.Bold)
                 }
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(16.dp))
                 Text(
-                    "Time Out Successful",
+                    "Visit Completed!",
                     color      = TextPrimary,
                     fontWeight = FontWeight.Bold,
-                    fontSize   = 15.sp
+                    fontSize   = 18.sp
                 )
                 Spacer(Modifier.height(4.dp))
-                Text("Visit session completed", color = TextMuted, fontSize = 12.sp)
+                Text(
+                    "Time out recorded successfully.",
+                    color    = TextMuted,
+                    fontSize = 13.sp
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    formatTime(System.currentTimeMillis()),
+                    color      = AccentGreen,
+                    fontSize   = 12.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
         }
     }
@@ -638,37 +788,38 @@ fun LoginVisitScreen(navController: NavHostController) {
     // ── DUPLICATE OVERLAY ─────────────────────
     if (showDuplicate) {
         Box(
-            Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.6f)),
+            Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.65f)),
             contentAlignment = Alignment.Center
         ) {
             Column(
                 Modifier
-                    .clip(RoundedCornerShape(20.dp))
+                    .padding(40.dp)
+                    .clip(RoundedCornerShape(24.dp))
                     .background(BgCard)
-                    .padding(28.dp),
+                    .padding(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Box(
                     Modifier
-                        .size(52.dp)
-                        .clip(RoundedCornerShape(14.dp))
+                        .size(64.dp)
+                        .clip(RoundedCornerShape(18.dp))
                         .background(AccentAmber.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("!", color = AccentAmber, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    Text("!", color = AccentAmber, fontSize = 28.sp, fontWeight = FontWeight.Bold)
                 }
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(16.dp))
                 Text(
-                    "Duplicate Visit Blocked",
+                    "Already Recorded",
                     color      = TextPrimary,
                     fontWeight = FontWeight.Bold,
-                    fontSize   = 15.sp
+                    fontSize   = 18.sp
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Same purpose already recorded today",
+                    "This visitor already has a record for the same purpose today.",
                     color    = TextMuted,
-                    fontSize = 12.sp
+                    fontSize = 13.sp
                 )
             }
         }
@@ -676,11 +827,11 @@ fun LoginVisitScreen(navController: NavHostController) {
 }
 
 // ─────────────────────────────────────────────
-//  REUSABLE: COMPACT SECTION
+//  REUSABLE: VISIT CARD SECTION
 // ─────────────────────────────────────────────
 
 @Composable
-fun CompactSection(
+fun VisitCard(
     title:   String,
     accent:  Color = Color(0xFF5C7CFA),
     content: @Composable ColumnScope.() -> Unit
@@ -688,28 +839,25 @@ fun CompactSection(
     Column(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(14.dp))
             .background(Color(0xFF111827))
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier          = Modifier.padding(bottom = 2.dp)
-        ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 Modifier
                     .width(3.dp)
-                    .height(12.dp)
+                    .height(14.dp)
                     .clip(RoundedCornerShape(2.dp))
                     .background(accent)
             )
-            Spacer(Modifier.width(7.dp))
+            Spacer(Modifier.width(8.dp))
             Text(
                 title,
                 color      = Color(0xFFE0E8FF),
                 fontWeight = FontWeight.SemiBold,
-                fontSize   = 12.sp
+                fontSize   = 13.sp
             )
         }
         HorizontalDivider(color = Color(0xFF1E2D5A), thickness = 0.5.dp)
@@ -717,32 +865,91 @@ fun CompactSection(
     }
 }
 
-// ── Keep VisitSection as alias for compatibility
+// ── Keep aliases for backward compatibility
+@Composable
+fun CompactSection(
+    title:   String,
+    accent:  Color = Color(0xFF5C7CFA),
+    content: @Composable ColumnScope.() -> Unit
+) = VisitCard(title = title, accent = accent, content = content)
+
 @Composable
 fun VisitSection(
     title:   String,
     accent:  Color = Color(0xFF5C7CFA),
     content: @Composable ColumnScope.() -> Unit
-) = CompactSection(title = title, accent = accent, content = content)
+) = VisitCard(title = title, accent = accent, content = content)
 
 // ─────────────────────────────────────────────
-//  REUSABLE: SUGGESTION LIST
+//  REUSABLE: PERSON CARD
 // ─────────────────────────────────────────────
 
+@Composable
+fun PersonCard(
+    initial:  String,
+    name:     String,
+    detail:   String,
+    subLabel: String,
+    accent:   Color
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(accent.copy(alpha = 0.08f))
+            .border(1.dp, accent.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier
+                .size(38.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(accent.copy(alpha = 0.2f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                initial,
+                color      = accent,
+                fontWeight = FontWeight.Bold,
+                fontSize   = 16.sp
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Column {
+            Text(
+                name,
+                color      = Color(0xFFE0E8FF),
+                fontWeight = FontWeight.SemiBold,
+                fontSize   = 13.sp
+            )
+            Text(detail,   color = Color(0xFF6B7FC4), fontSize = 12.sp)
+            Text(subLabel, color = Color(0xFF4A5680), fontSize = 10.sp)
+        }
+    }
+}
+
+// Keep old name for compatibility
+@Composable
+fun MatchedPersonCard(
+    initial:  String,
+    name:     String,
+    detail:   String,
+    subLabel: String,
+    accent:   Color
+) = PersonCard(initial, name, detail, subLabel, accent)
+
+// Keep old name for compatibility
 @Composable
 fun SuggestionList(accent: Color, content: @Composable ColumnScope.() -> Unit) {
     Column(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(Color(0xFF0A0F1E))
-            .border(1.dp, Color(0xFF1E2D5A), RoundedCornerShape(8.dp))
+            .border(1.dp, Color(0xFF1E2D5A), RoundedCornerShape(10.dp))
     ) { content() }
 }
-
-// ─────────────────────────────────────────────
-//  REUSABLE: SUGGESTION ITEM
-// ─────────────────────────────────────────────
 
 @Composable
 fun SuggestionItem(
@@ -759,13 +966,13 @@ fun SuggestionItem(
                 interactionSource = remember { MutableInteractionSource() },
                 indication        = null
             ) { onClick() }
-            .padding(horizontal = 10.dp, vertical = 8.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             Modifier
-                .size(28.dp)
-                .clip(RoundedCornerShape(7.dp))
+                .size(30.dp)
+                .clip(RoundedCornerShape(8.dp))
                 .background(accent.copy(alpha = 0.15f)),
             contentAlignment = Alignment.Center
         ) {
@@ -773,58 +980,14 @@ fun SuggestionItem(
                 Icons.Outlined.Person,
                 null,
                 tint     = accent,
-                modifier = Modifier.size(14.dp)
+                modifier = Modifier.size(15.dp)
             )
         }
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(10.dp))
         Column {
             Text(name,     color = Color(0xFFE0E8FF), fontSize = 12.sp, fontWeight = FontWeight.Medium)
             Text(subLabel, color = Color(0xFF4A5680), fontSize = 10.sp)
         }
     }
     if (showDivider) HorizontalDivider(color = Color(0xFF1E2D5A), thickness = 0.5.dp)
-}
-
-// ─────────────────────────────────────────────
-//  REUSABLE: MATCHED PERSON CARD
-// ─────────────────────────────────────────────
-
-@Composable
-fun MatchedPersonCard(
-    initial:  String,
-    name:     String,
-    detail:   String,
-    subLabel: String,
-    accent:   Color
-) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .background(accent.copy(alpha = 0.08f))
-            .border(1.dp, accent.copy(alpha = 0.25f), RoundedCornerShape(10.dp))
-            .padding(10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            Modifier
-                .size(34.dp)
-                .clip(RoundedCornerShape(9.dp))
-                .background(accent.copy(alpha = 0.2f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                initial,
-                color      = accent,
-                fontWeight = FontWeight.Bold,
-                fontSize   = 14.sp
-            )
-        }
-        Spacer(Modifier.width(8.dp))
-        Column {
-            Text(name,     color = Color(0xFFE0E8FF), fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
-            Text(detail,   color = Color(0xFF6B7FC4), fontSize = 11.sp)
-            Text(subLabel, color = Color(0xFF4A5680), fontSize = 10.sp)
-        }
-    }
 }
