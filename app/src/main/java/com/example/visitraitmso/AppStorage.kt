@@ -1,10 +1,15 @@
-package com.visitraitmso.app
+package com.example.visitraitmso
 
 import androidx.compose.runtime.mutableStateListOf
-import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.EventListener
+import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.QuerySnapshot
-import com.google.firebase.firestore.FirebaseFirestoreException
+import com.visitraitmso.app.AdminUser
+import com.visitraitmso.app.Faculty
+import com.visitraitmso.app.LoginLog
+import com.visitraitmso.app.Student
+import com.visitraitmso.app.User
+import com.visitraitmso.app.Visit
 
 object AppStorage {
     private val db: FirebaseFirestore by lazy { FirebaseFirestore.getInstance() }
@@ -16,71 +21,81 @@ object AppStorage {
     val users     = mutableStateListOf<User>()
 
     fun initFirestore() {
-        // Listen for Students
-        db.collection("students").addSnapshotListener(EventListener<QuerySnapshot> { snapshot, error ->
-            if (error != null) return@EventListener
-            snapshot?.let {
-                val list = it.toObjects(Student::class.java)
-                students.clear()
-                students.addAll(list)
-            }
-        })
+        db.collection("students")
+            .addSnapshotListener(EventListener<QuerySnapshot> { snap, err ->
+                if (err != null) return@EventListener
+                snap?.let {
+                    students.clear()
+                    students.addAll(it.toObjects(Student::class.java))
+                }
+            })
 
-        // Listen for Faculty
-        db.collection("faculties").addSnapshotListener(EventListener<QuerySnapshot> { snapshot, error ->
-            if (error != null) return@EventListener
-            snapshot?.let {
-                val list = it.toObjects(Faculty::class.java)
-                faculties.clear()
-                faculties.addAll(list)
-            }
-        })
+        db.collection("faculties")
+            .addSnapshotListener(EventListener<QuerySnapshot> { snap, err ->
+                if (err != null) return@EventListener
+                snap?.let {
+                    faculties.clear()
+                    faculties.addAll(it.toObjects(Faculty::class.java))
+                }
+            })
 
-        // Listen for Visits
-        db.collection("visits").addSnapshotListener(EventListener<QuerySnapshot> { snapshot, error ->
-            if (error != null) return@EventListener
-            snapshot?.let {
-                val list = it.toObjects(Visit::class.java)
-                visits.clear()
-                visits.addAll(list)
-            }
-        })
+        db.collection("visits")
+            .addSnapshotListener(EventListener<QuerySnapshot> { snap, err ->
+                if (err != null) return@EventListener
+                snap?.let {
+                    visits.clear()
+                    visits.addAll(it.toObjects(Visit::class.java))
+                }
+            })
 
-        // Listen for Users
-        db.collection("users").addSnapshotListener(EventListener<QuerySnapshot> { snapshot, error ->
-            if (error != null) return@EventListener
-            snapshot?.let {
-                val list = it.toObjects(User::class.java)
-                users.clear()
-                users.addAll(list)
-            }
-        })
+        db.collection("users")
+            .addSnapshotListener(EventListener<QuerySnapshot> { snap, err ->
+                if (err != null) return@EventListener
+                snap?.let {
+                    users.clear()
+                    users.addAll(it.toObjects(User::class.java))
+                }
+            })
     }
 
     fun saveStudent(student: Student) {
-        db.collection("students").document(student.studentId).set(student)
+        db.collection("students")
+            .document(student.studentId)
+            .set(student)
     }
 
     fun saveFaculty(faculty: Faculty) {
-        db.collection("faculties").document(faculty.employeeId).set(faculty)
+        db.collection("faculties")
+            .document(faculty.employeeId)
+            .set(faculty)
     }
 
     fun saveVisit(visit: Visit) {
-        val docId = if (visit.studentId.startsWith("EXT-")) visit.studentId else "${visit.studentId}_${visit.timeIn}"
+        val docId = when {
+            visit.id.isNotEmpty()              -> visit.id
+            visit.studentId.startsWith("EXT-") -> visit.studentId
+            else                               -> "${visit.studentId}_${visit.timeIn}"
+        }
         db.collection("visits").document(docId).set(visit)
     }
 
     fun deleteVisit(visit: Visit) {
-        val docId = if (visit.studentId.startsWith("EXT-")) visit.studentId else "${visit.studentId}_${visit.timeIn}"
+        val docId = when {
+            visit.id.isNotEmpty()              -> visit.id
+            visit.studentId.startsWith("EXT-") -> visit.studentId
+            else                               -> "${visit.studentId}_${visit.timeIn}"
+        }
         db.collection("visits").document(docId).delete()
     }
 
     fun getUser(uid: String, onResult: (User?) -> Unit) {
-        db.collection("users").document(uid).get().addOnSuccessListener { doc ->
-            onResult(doc.toObject(User::class.java))
-        }.addOnFailureListener {
-            onResult(null)
-        }
+        db.collection("users").document(uid).get()
+            .addOnSuccessListener { doc ->
+                onResult(doc.toObject(User::class.java))
+            }
+            .addOnFailureListener {
+                onResult(null)
+            }
     }
 
     fun saveUser(user: User) {
@@ -88,55 +103,16 @@ object AppStorage {
     }
 
     fun getAdminUser(uid: String, onResult: (AdminUser?) -> Unit) {
-        db.collection("admins").document(uid).get().addOnSuccessListener { doc ->
-            onResult(doc.toObject(AdminUser::class.java))
-        }.addOnFailureListener {
-            onResult(null)
-        }
+        db.collection("admins").document(uid).get()
+            .addOnSuccessListener { doc ->
+                onResult(doc.toObject(AdminUser::class.java))
+            }
+            .addOnFailureListener {
+                onResult(null)
+            }
+    }
+
+    fun saveLoginLog(log: LoginLog) {
+        db.collection("loginLogs").add(log)
     }
 }
-
-// ─────────────────────────────────────────────
-//  MODELS
-// ─────────────────────────────────────────────
-
-data class User(
-    val uid: String = "",
-    val name: String = "",
-    val email: String = "",
-    val role: String = "User" // "Super Admin", "Admin", "Staff", "User"
-)
-
-data class AdminUser(
-    val uid: String = "",
-    val email: String = "",
-    val role: String = "Staff" // "Super Admin" or "Staff"
-)
-
-data class Student(
-    val name: String = "",
-    val studentId: String = "",
-    val type: String = "",
-    val course: String?    = null,
-    val yearLevel: String? = null
-)
-
-data class Faculty(
-    val name: String = "",
-    val employeeId: String = "",
-    val department: String = ""
-)
-
-data class Visit(
-    val studentId: String = "",
-    val purpose: String = "",
-    val timeIn: Long = 0L,
-    val timeOut: Long?     = null,
-    val visitorType: String = "Student",
-    val visitorName: String = ""
-)
-
-data class LoginLog(
-    val username: String = "",
-    val time: Long = 0L
-)

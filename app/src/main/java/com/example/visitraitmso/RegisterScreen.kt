@@ -9,7 +9,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,6 +19,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
@@ -42,57 +43,53 @@ private val TextSub      = Color(0xFF4A5680)
 private val BorderColor  = Color(0xFF1E2D5A)
 
 // ─────────────────────────────────────────────
+//  DATA
+// ─────────────────────────────────────────────
+
+private val collegeCourses = listOf(
+    "BSIT", "BSBA", "BSSW", "BPED", "BSED", "BEED", "BECED"
+)
+
+private val collegeYears = listOf(
+    "1st Year", "2nd Year", "3rd Year", "4th Year"
+)
+
+private val ibedGrades = listOf(
+    "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12"
+)
+
+private val facultyDeptCollege = listOf(
+    "College of IT", "College of Business", "College of Social Work",
+    "College of Education", "College of Arts & Sciences"
+)
+
+private val facultyDeptIBED = listOf(
+    "Junior High School", "Senior High School", "Grade School", "Pre-School"
+)
+
+// ─────────────────────────────────────────────
 //  SCREEN
 // ─────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RegisterScreen(navController: NavHostController) {
-
-    var registerTab by remember { mutableStateOf(0) }
-
-    // Student
-    var studentName by remember { mutableStateOf("") }
-    var studentId   by remember { mutableStateOf("") }
-    var studentType by remember { mutableStateOf("College") }
-    var course      by remember { mutableStateOf("") }
-    var yearLevel   by remember { mutableStateOf("") }
-
-    // Faculty
-    var facultyName by remember { mutableStateOf("") }
-    var employeeId  by remember { mutableStateOf("") }
-    var department  by remember { mutableStateOf("") }
-
-    // External
-    var extName by remember { mutableStateOf("") }
-    var extOrg  by remember { mutableStateOf("") }
-
-    // Shared
-    var agreed       by remember { mutableStateOf(false) }
-    var showDialog   by remember { mutableStateOf(false) }
-    var showPrivacy  by remember { mutableStateOf(false) }
-    var yearExpanded by remember { mutableStateOf(false) }
-    var isLoading    by remember { mutableStateOf(false) }
+fun RegisterScreen(
+    navController: NavHostController,
+    viewModel:     RegisterViewModel
+) {
+    var showPrivacy    by remember { mutableStateOf(false) }
+    var courseExpanded by remember { mutableStateOf(false) }
+    var yearExpanded   by remember { mutableStateOf(false) }
+    var deptExpanded   by remember { mutableStateOf(false) }
+    var levelExpanded  by remember { mutableStateOf(false) }
+    var facultyType    by remember { mutableStateOf("College") }
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    fun resetAll() {
-        studentName  = ""; studentId   = ""; course     = ""; yearLevel  = ""
-        facultyName  = ""; employeeId  = ""; department = ""
-        extName      = ""; extOrg      = ""
-        agreed       = false; studentType = "College"; yearExpanded = false
-    }
-
-    val tabAccent = when (registerTab) {
+    val tabAccent = when (viewModel.registerTab) {
         0    -> AccentBlue
         1    -> AccentPurple
         else -> AccentAmber
-    }
-
-    val canSave = agreed && when (registerTab) {
-        0    -> studentName.isNotBlank() && studentId.isNotBlank()
-        1    -> facultyName.isNotBlank() && employeeId.isNotBlank() && department.isNotBlank()
-        else -> extName.isNotBlank()
     }
 
     val fieldColors = OutlinedTextFieldDefaults.colors(
@@ -107,18 +104,18 @@ fun RegisterScreen(navController: NavHostController) {
 
     Column(Modifier.fillMaxSize().background(BgDeep)) {
 
-        // ── TOP BAR ──────────────────────────
+        // ── SLIM TOP BAR ─────────────────────
         Row(
             Modifier
                 .fillMaxWidth()
                 .background(BgTopBar)
-                .padding(horizontal = 16.dp, vertical = 10.dp),
+                .padding(horizontal = 14.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 Modifier
-                    .size(32.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                    .size(28.dp)
+                    .clip(RoundedCornerShape(7.dp))
                     .background(BorderColor)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
@@ -127,65 +124,19 @@ fun RegisterScreen(navController: NavHostController) {
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    Icons.Default.ArrowBack,
-                    contentDescription = "Back",
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    null,
                     tint     = TextMuted,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(14.dp)
                 )
             }
-            Spacer(Modifier.width(12.dp))
-            Column {
-                Text(
-                    "Register",
-                    color      = TextPrimary,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize   = 15.sp
-                )
-                Text(
-                    when (registerTab) {
-                        0    -> "Create a new student record"
-                        1    -> "Create a new faculty record"
-                        else -> "Register an external visitor"
-                    },
-                    color    = TextMuted,
-                    fontSize = 11.sp
-                )
-            }
-        }
-
-        // ── TYPE TABS ─────────────────────────
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .background(BgTopBar)
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            listOf("Student", "Faculty", "External").forEachIndexed { i, label ->
-                val selected = registerTab == i
-                val accent   = when (i) { 0 -> AccentBlue; 1 -> AccentPurple; else -> AccentAmber }
-                Box(
-                    Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(if (selected) accent else BgCard)
-                        .border(1.dp, if (selected) accent else BorderColor, RoundedCornerShape(10.dp))
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication        = null
-                        ) { registerTab = i; resetAll() }
-                        .padding(vertical = 10.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        label,
-                        color      = if (selected) Color.White else TextMuted,
-                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                        fontSize   = 13.sp
-                    )
-                }
-            }
+            Spacer(Modifier.width(10.dp))
+            Text(
+                "St. Bridget College · ITMSO",
+                color    = TextMuted,
+                fontSize = 11.sp,
+                modifier = Modifier.weight(1f)
+            )
         }
 
         // ── SCROLLABLE BODY ──────────────────
@@ -193,232 +144,397 @@ fun RegisterScreen(navController: NavHostController) {
             Modifier
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
-                .padding(top = 16.dp, bottom = 80.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
 
-            // ══ STUDENT TAB ══════════════════
-            if (registerTab == 0) {
-
-                RegSection(title = "Personal Information", accent = AccentBlue) {
-                    RegField(
-                        value         = studentName,
-                        onValueChange = { studentName = it },
-                        label         = "Full Name",
-                        icon          = Icons.Outlined.Person,
-                        placeholder   = "e.g. Maria Santos",
-                        colors        = fieldColors
-                    )
-                    RegField(
-                        value         = studentId,
-                        onValueChange = { studentId = it },
-                        label         = "Student ID",
-                        icon          = Icons.Outlined.Lock,
-                        placeholder   = "e.g. 2024-00123",
-                        colors        = fieldColors
+            // ── CARD HEADER ──────────────────
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(BgCard)
+                    .border(1.dp, BorderColor, RoundedCornerShape(16.dp))
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Icon badge
+                Box(
+                    Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(tabAccent.copy(alpha = 0.12f))
+                        .border(1.dp, tabAccent.copy(alpha = 0.25f), RoundedCornerShape(14.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        when (viewModel.registerTab) {
+                            0    -> "🎓"
+                            1    -> "👤"
+                            else -> "🪪"
+                        },
+                        fontSize = 22.sp
                     )
                 }
 
-                RegSection(title = "Student Type", accent = AccentBlue) {
+                Text(
+                    "Registration",
+                    color      = TextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize   = 18.sp,
+                    textAlign  = TextAlign.Center
+                )
+
+                Text(
+                    "Select registrant type and fill in the form",
+                    color     = TextSub,
+                    fontSize  = 11.sp,
+                    textAlign = TextAlign.Center
+                )
+
+                HorizontalDivider(color = BorderColor, thickness = 0.5.dp)
+
+                // Tabs inside card
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    listOf(
+                        Triple("Student",  AccentBlue,   0),
+                        Triple("Faculty",  AccentPurple, 1),
+                        Triple("External", AccentAmber,  2)
+                    ).forEach { (label, accent, idx) ->
+                        val sel = viewModel.registerTab == idx
+                        Column(
+                            Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (sel) accent else BgInput)
+                                .border(
+                                    1.dp,
+                                    if (sel) accent else BorderColor,
+                                    RoundedCornerShape(10.dp)
+                                )
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication        = null
+                                ) {
+                                    viewModel.registerTab = idx
+                                    viewModel.resetFields()
+                                    facultyType    = "College"
+                                    courseExpanded = false
+                                    yearExpanded   = false
+                                    deptExpanded   = false
+                                    levelExpanded  = false
+                                }
+                                .padding(vertical = 9.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                label,
+                                color      = if (sel) Color.White else TextMuted,
+                                fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal,
+                                fontSize   = 12.sp
+                            )
+                        }
+                    }
+                }
+            }
+
+            // ══ STUDENT ══════════════════════
+            if (viewModel.registerTab == 0) {
+
+                RegSection("Personal Information", AccentBlue) {
+                    RegField(
+                        viewModel.studentName, { viewModel.studentName = it },
+                        "Full Name", Icons.Outlined.Person, "e.g. Maria Santos", fieldColors
+                    )
+                    RegField(
+                        viewModel.studentId, { viewModel.studentId = it },
+                        "Student ID", Icons.Outlined.Lock, "e.g. 2024-00123", fieldColors
+                    )
+                }
+
+                RegSection("Student Type", AccentBlue) {
                     Row(
                         Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         listOf("College", "IBED").forEach { option ->
-                            val selected = studentType == option
+                            val sel = viewModel.studentType == option
                             Box(
                                 Modifier
                                     .weight(1f)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(if (selected) AccentBlue else BgInput)
-                                    .border(
-                                        1.dp,
-                                        if (selected) AccentBlue else BorderColor,
-                                        RoundedCornerShape(10.dp)
-                                    )
+                                    .clip(RoundedCornerShape(9.dp))
+                                    .background(if (sel) AccentBlue else BgInput)
+                                    .border(1.dp, if (sel) AccentBlue else BorderColor, RoundedCornerShape(9.dp))
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication        = null
                                     ) {
-                                        studentType  = option
-                                        yearLevel    = ""
-                                        course       = ""
-                                        yearExpanded = false
+                                        viewModel.studentType = option
+                                        viewModel.course      = ""
+                                        viewModel.yearLevel   = ""
+                                        courseExpanded        = false
+                                        yearExpanded          = false
+                                        levelExpanded         = false
                                     }
-                                    .padding(vertical = 12.dp),
+                                    .padding(vertical = 10.dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     option,
-                                    color      = if (selected) Color.White else TextMuted,
+                                    color      = if (sel) Color.White else TextMuted,
                                     fontWeight = FontWeight.SemiBold,
-                                    fontSize   = 14.sp
+                                    fontSize   = 13.sp
                                 )
                             }
                         }
                     }
 
-                    Spacer(Modifier.height(4.dp))
+                    if (viewModel.studentType == "College") {
+                        // Course dropdown
+                        ExposedDropdownMenuBox(
+                            expanded         = courseExpanded,
+                            onExpandedChange = { courseExpanded = !courseExpanded }
+                        ) {
+                            OutlinedTextField(
+                                value         = viewModel.course,
+                                onValueChange = {},
+                                readOnly      = true,
+                                label         = { Text("Course", color = TextMuted, fontSize = 12.sp) },
+                                placeholder   = { Text("Select course…", color = TextSub, fontSize = 12.sp) },
+                                trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(courseExpanded) },
+                                colors        = fieldColors,
+                                shape         = RoundedCornerShape(9.dp),
+                                modifier      = Modifier.menuAnchor().fillMaxWidth()
+                            )
+                            ExposedDropdownMenu(
+                                expanded         = courseExpanded,
+                                onDismissRequest = { courseExpanded = false },
+                                modifier         = Modifier.background(BgCard)
+                            ) {
+                                collegeCourses.forEach { c ->
+                                    DropdownMenuItem(
+                                        text     = { Text(c, color = TextPrimary, fontSize = 13.sp) },
+                                        onClick  = { viewModel.course = c; courseExpanded = false },
+                                        modifier = Modifier.background(BgCard)
+                                    )
+                                }
+                            }
+                        }
 
-                    if (studentType == "College") {
-                        RegField(
-                            value         = course,
-                            onValueChange = { course = it },
-                            label         = "Course",
-                            icon          = Icons.Outlined.Person,
-                            placeholder   = "e.g. BS Information Technology",
-                            colors        = fieldColors
-                        )
-
-                        // Year Level dropdown
+                        // Year level dropdown
                         ExposedDropdownMenuBox(
                             expanded         = yearExpanded,
                             onExpandedChange = { yearExpanded = !yearExpanded }
                         ) {
                             OutlinedTextField(
-                                value         = yearLevel,
+                                value         = viewModel.yearLevel,
                                 onValueChange = {},
                                 readOnly      = true,
-                                label         = { Text("Year Level", color = TextMuted, fontSize = 13.sp) },
-                                placeholder   = { Text("Select year level...", color = TextSub, fontSize = 13.sp) },
-                                trailingIcon  = {
-                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = yearExpanded)
-                                },
-                                colors   = fieldColors,
-                                shape    = RoundedCornerShape(12.dp),
-                                modifier = Modifier.menuAnchor().fillMaxWidth()
+                                label         = { Text("Year Level", color = TextMuted, fontSize = 12.sp) },
+                                placeholder   = { Text("Select year level…", color = TextSub, fontSize = 12.sp) },
+                                trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(yearExpanded) },
+                                colors        = fieldColors,
+                                shape         = RoundedCornerShape(9.dp),
+                                modifier      = Modifier.menuAnchor().fillMaxWidth()
                             )
                             ExposedDropdownMenu(
                                 expanded         = yearExpanded,
                                 onDismissRequest = { yearExpanded = false },
                                 modifier         = Modifier.background(BgCard)
                             ) {
-                                listOf("1st Year", "2nd Year", "3rd Year", "4th Year").forEach { yr ->
+                                collegeYears.forEach { yr ->
                                     DropdownMenuItem(
                                         text     = { Text(yr, color = TextPrimary, fontSize = 13.sp) },
-                                        onClick  = { yearLevel = yr; yearExpanded = false },
+                                        onClick  = { viewModel.yearLevel = yr; yearExpanded = false },
                                         modifier = Modifier.background(BgCard)
                                     )
                                 }
                             }
                         }
                     } else {
-                        RegField(
-                            value         = yearLevel,
-                            onValueChange = { yearLevel = it },
-                            label         = "Grade Level",
-                            icon          = Icons.Outlined.Person,
-                            placeholder   = "e.g. Grade 10",
-                            colors        = fieldColors
+                        // IBED grade level dropdown
+                        ExposedDropdownMenuBox(
+                            expanded         = levelExpanded,
+                            onExpandedChange = { levelExpanded = !levelExpanded }
+                        ) {
+                            OutlinedTextField(
+                                value         = viewModel.yearLevel,
+                                onValueChange = {},
+                                readOnly      = true,
+                                label         = { Text("Grade Level", color = TextMuted, fontSize = 12.sp) },
+                                placeholder   = { Text("Select grade level…", color = TextSub, fontSize = 12.sp) },
+                                trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(levelExpanded) },
+                                colors        = fieldColors,
+                                shape         = RoundedCornerShape(9.dp),
+                                modifier      = Modifier.menuAnchor().fillMaxWidth()
+                            )
+                            ExposedDropdownMenu(
+                                expanded         = levelExpanded,
+                                onDismissRequest = { levelExpanded = false },
+                                modifier         = Modifier.background(BgCard)
+                            ) {
+                                ibedGrades.forEach { gr ->
+                                    DropdownMenuItem(
+                                        text     = { Text(gr, color = TextPrimary, fontSize = 13.sp) },
+                                        onClick  = { viewModel.yearLevel = gr; levelExpanded = false },
+                                        modifier = Modifier.background(BgCard)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ══ FACULTY ══════════════════════
+            if (viewModel.registerTab == 1) {
+
+                RegSection("Faculty Information", AccentPurple) {
+                    RegField(
+                        viewModel.facultyName, { viewModel.facultyName = it },
+                        "Full Name", Icons.Outlined.Person, "e.g. Mr. Juan dela Cruz", fieldColors
+                    )
+                    RegField(
+                        viewModel.employeeId, { viewModel.employeeId = it },
+                        "Employee ID", Icons.Outlined.Lock, "e.g. EMP-2024-001", fieldColors
+                    )
+                }
+
+                RegSection("Faculty Type", AccentPurple) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf("College", "IBED").forEach { option ->
+                            val sel = facultyType == option
+                            Box(
+                                Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(9.dp))
+                                    .background(if (sel) AccentPurple else BgInput)
+                                    .border(1.dp, if (sel) AccentPurple else BorderColor, RoundedCornerShape(9.dp))
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication        = null
+                                    ) {
+                                        facultyType          = option
+                                        viewModel.department = ""
+                                        deptExpanded         = false
+                                    }
+                                    .padding(vertical = 10.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    option,
+                                    color      = if (sel) Color.White else TextMuted,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize   = 13.sp
+                                )
+                            }
+                        }
+                    }
+
+                    val deptList = if (facultyType == "College") facultyDeptCollege else facultyDeptIBED
+
+                    ExposedDropdownMenuBox(
+                        expanded         = deptExpanded,
+                        onExpandedChange = { deptExpanded = !deptExpanded }
+                    ) {
+                        OutlinedTextField(
+                            value         = viewModel.department,
+                            onValueChange = {},
+                            readOnly      = true,
+                            label         = { Text("Department", color = TextMuted, fontSize = 12.sp) },
+                            placeholder   = { Text("Select department…", color = TextSub, fontSize = 12.sp) },
+                            trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(deptExpanded) },
+                            colors        = fieldColors,
+                            shape         = RoundedCornerShape(9.dp),
+                            modifier      = Modifier.menuAnchor().fillMaxWidth()
+                        )
+                        ExposedDropdownMenu(
+                            expanded         = deptExpanded,
+                            onDismissRequest = { deptExpanded = false },
+                            modifier         = Modifier.background(BgCard)
+                        ) {
+                            deptList.forEach { dept ->
+                                DropdownMenuItem(
+                                    text     = { Text(dept, color = TextPrimary, fontSize = 13.sp) },
+                                    onClick  = { viewModel.department = dept; deptExpanded = false },
+                                    modifier = Modifier.background(BgCard)
+                                )
+                            }
+                        }
+                    }
+
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(AccentPurple.copy(alpha = 0.07f))
+                            .border(1.dp, AccentPurple.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
+                            .padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("ℹ", color = AccentPurple, fontSize = 14.sp)
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "Faculty records allow Employee ID-based lookup during visit logging.",
+                            color      = TextMuted,
+                            fontSize   = 11.sp,
+                            lineHeight = 16.sp
                         )
                     }
                 }
             }
 
-            // ══ FACULTY TAB ══════════════════
-            if (registerTab == 1) {
+            // ══ EXTERNAL ═════════════════════
+            if (viewModel.registerTab == 2) {
 
-                RegSection(title = "Faculty Information", accent = AccentPurple) {
-                    RegField(
-                        value         = facultyName,
-                        onValueChange = { facultyName = it },
-                        label         = "Full Name",
-                        icon          = Icons.Outlined.Person,
-                        placeholder   = "e.g. Mr. Juan dela Cruz",
-                        colors        = fieldColors
-                    )
-                    RegField(
-                        value         = employeeId,
-                        onValueChange = { employeeId = it },
-                        label         = "Employee ID",
-                        icon          = Icons.Outlined.Lock,
-                        placeholder   = "e.g. EMP-2024-001",
-                        colors        = fieldColors
-                    )
-                    RegField(
-                        value         = department,
-                        onValueChange = { department = it },
-                        label         = "Department",
-                        icon          = Icons.Outlined.Person,
-                        placeholder   = "e.g. College of IT",
-                        colors        = fieldColors
-                    )
-                }
-
-                // Info note
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(AccentPurple.copy(alpha = 0.08f))
-                        .border(1.dp, AccentPurple.copy(alpha = 0.25f), RoundedCornerShape(10.dp))
-                        .padding(12.dp),
+                        .clip(RoundedCornerShape(9.dp))
+                        .background(AccentAmber.copy(alpha = 0.07f))
+                        .border(1.dp, AccentAmber.copy(alpha = 0.2f), RoundedCornerShape(9.dp))
+                        .padding(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("ℹ", color = AccentPurple, fontSize = 16.sp)
-                    Spacer(Modifier.width(10.dp))
-                    Text(
-                        "Faculty records allow Employee ID-based lookup during visit logging.",
-                        color      = TextMuted,
-                        fontSize   = 12.sp,
-                        lineHeight = 18.sp
-                    )
-                }
-            }
-
-            // ══ EXTERNAL TAB ═════════════════
-            if (registerTab == 2) {
-
-                // Info note
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(AccentAmber.copy(alpha = 0.08f))
-                        .border(1.dp, AccentAmber.copy(alpha = 0.25f), RoundedCornerShape(10.dp))
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("ℹ", color = AccentAmber, fontSize = 16.sp)
-                    Spacer(Modifier.width(10.dp))
+                    Text("ℹ", color = AccentAmber, fontSize = 14.sp)
+                    Spacer(Modifier.width(8.dp))
                     Text(
                         "External visitors do not need a pre-existing ID. Only their name is required.",
                         color      = TextMuted,
-                        fontSize   = 12.sp,
-                        lineHeight = 18.sp
+                        fontSize   = 11.sp,
+                        lineHeight = 16.sp
                     )
                 }
 
-                RegSection(title = "Visitor Information", accent = AccentAmber) {
+                RegSection("Visitor Information", AccentAmber) {
                     RegField(
-                        value         = extName,
-                        onValueChange = { extName = it },
-                        label         = "Full Name",
-                        icon          = Icons.Outlined.Person,
-                        placeholder   = "e.g. Juan dela Cruz",
-                        colors        = fieldColors
+                        viewModel.extName, { viewModel.extName = it },
+                        "Full Name", Icons.Outlined.Person, "e.g. Juan dela Cruz", fieldColors
                     )
                     RegField(
-                        value         = extOrg,
-                        onValueChange = { extOrg = it },
-                        label         = "Organization / Purpose (optional)",
-                        icon          = Icons.Outlined.Person,
-                        placeholder   = "e.g. DepEd, Parent, Meeting",
-                        colors        = fieldColors
+                        viewModel.extOrg, { viewModel.extOrg = it },
+                        "Organization / Purpose (optional)", Icons.Outlined.Person,
+                        "e.g. DepEd, Parent, Meeting", fieldColors
                     )
                 }
             }
 
-            // ── PRIVACY & AGREEMENT ───────────
-            RegSection(title = "Privacy & Agreement", accent = tabAccent) {
+            // ── PRIVACY ───────────────────────
+            RegSection("Privacy & Agreement", tabAccent) {
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(RoundedCornerShape(9.dp))
                         .background(BgInput)
-                        .border(1.dp, BorderColor, RoundedCornerShape(10.dp))
-                        .padding(12.dp),
+                        .border(1.dp, BorderColor, RoundedCornerShape(9.dp))
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
                     verticalAlignment     = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -427,33 +543,38 @@ fun RegisterScreen(navController: NavHostController) {
                         modifier          = Modifier.weight(1f)
                     ) {
                         Checkbox(
-                            checked         = agreed,
-                            onCheckedChange = { agreed = it },
+                            checked         = viewModel.agreed,
+                            onCheckedChange = { viewModel.agreed = it },
                             colors          = CheckboxDefaults.colors(
                                 checkedColor   = tabAccent,
                                 uncheckedColor = TextSub
                             )
                         )
-                        Spacer(Modifier.width(6.dp))
+                        Spacer(Modifier.width(4.dp))
                         Text(
                             "I agree to the privacy policy.",
                             color    = TextMuted,
-                            fontSize = 13.sp
+                            fontSize = 12.sp
                         )
                     }
-                    TextButton(onClick = { showPrivacy = true }) {
-                        Text("View", color = tabAccent, fontSize = 13.sp)
+                    TextButton(
+                        onClick        = { showPrivacy = true },
+                        contentPadding = PaddingValues(horizontal = 6.dp)
+                    ) {
+                        Text("View", color = tabAccent, fontSize = 12.sp)
                     }
                 }
-                if (!agreed) {
+                if (!viewModel.agreed) {
                     Text(
                         "You must agree to continue.",
                         color    = AccentRed.copy(alpha = 0.7f),
-                        fontSize = 11.sp,
+                        fontSize = 10.sp,
                         modifier = Modifier.padding(start = 4.dp)
                     )
                 }
             }
+
+            Spacer(Modifier.height(4.dp))
         }
 
         // ── STICKY SAVE BUTTON ────────────────
@@ -461,61 +582,45 @@ fun RegisterScreen(navController: NavHostController) {
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Button(
-                    onClick = {
-                        if (!canSave) return@Button
-                        isLoading = true
-                        when (registerTab) {
-                            0 -> AppStorage.saveStudent(
-                                Student(studentName, studentId, studentType, course, yearLevel)
-                            )
-                            1 -> AppStorage.saveFaculty(
-                                Faculty(facultyName, employeeId, department)
-                            )
-                        }
-                        isLoading = false
-                        showDialog = true
-                    },
-                    enabled  = canSave && !isLoading,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
-                    colors = ButtonDefaults.buttonColors(
+                    onClick  = { viewModel.save() },
+                    enabled  = viewModel.canSave && !viewModel.isLoading,
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    colors   = ButtonDefaults.buttonColors(
                         containerColor         = tabAccent,
-                        disabledContainerColor = tabAccent.copy(alpha = 0.3f)
+                        disabledContainerColor = tabAccent.copy(alpha = 0.25f)
                     ),
                     shape = RoundedCornerShape(14.dp)
                 ) {
-                    if (isLoading) {
+                    if (viewModel.isLoading) {
                         CircularProgressIndicator(
                             color       = Color.White,
-                            modifier    = Modifier.size(22.dp),
+                            modifier    = Modifier.size(20.dp),
                             strokeWidth = 2.dp
                         )
                     } else {
                         Text(
-                            when (registerTab) {
-                                0    -> "SAVE STUDENT"
-                                1    -> "SAVE FACULTY"
-                                else -> "LOG EXTERNAL VISITOR"
+                            when (viewModel.registerTab) {
+                                0    -> "Save Student"
+                                1    -> "Save Faculty"
+                                else -> "Log Visitor"
                             },
-                            fontWeight    = FontWeight.Bold,
-                            fontSize      = 14.sp,
-                            letterSpacing = 1.sp
+                            fontWeight = FontWeight.Bold,
+                            fontSize   = 14.sp
                         )
                     }
                 }
                 Text(
-                    when (registerTab) {
+                    when (viewModel.registerTab) {
                         0    -> "Name and Student ID are required"
                         1    -> "Name, Employee ID, and Department are required"
                         else -> "Only Full Name is required for external visitors"
                     },
                     color    = TextSub,
-                    fontSize = 11.sp,
+                    fontSize = 10.sp,
                     modifier = Modifier.align(Alignment.CenterHorizontally)
                 )
             }
@@ -523,60 +628,71 @@ fun RegisterScreen(navController: NavHostController) {
     }
 
     // ── SUCCESS DIALOG ────────────────────────
-    if (showDialog) {
+    if (viewModel.showSuccessDialog) {
         AlertDialog(
-            onDismissRequest = { showDialog = false },
+            onDismissRequest = { viewModel.showSuccessDialog = false },
             containerColor   = BgCard,
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showDialog = false
-                        resetAll()
-                        navController.navigate("home") {
-                            popUpTo("home") { inclusive = true }
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = tabAccent),
-                    shape  = RoundedCornerShape(10.dp)
-                ) { Text("Done") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDialog = false; resetAll() }) {
-                    Text("Register Another", color = TextMuted)
-                }
-            },
             icon = {
                 Box(
                     Modifier
-                        .size(52.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(AccentGreen.copy(alpha = 0.15f)),
+                        .size(64.dp)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(AccentGreen.copy(alpha = 0.15f))
+                        .border(1.dp, AccentGreen.copy(alpha = 0.25f), RoundedCornerShape(18.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("✓", color = AccentGreen, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    Text("✓", color = AccentGreen, fontSize = 28.sp, fontWeight = FontWeight.Bold)
                 }
             },
             title = {
                 Text(
-                    when (registerTab) {
-                        0    -> "Student Registered!"
-                        1    -> "Faculty Registered!"
-                        else -> "Visitor Logged!"
+                    when (viewModel.registerTab) {
+                        0    -> "Student registered"
+                        1    -> "Faculty registered"
+                        else -> "Visitor logged"
                     },
                     color      = TextPrimary,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    textAlign  = TextAlign.Center
                 )
             },
             text = {
                 Text(
-                    when (registerTab) {
+                    when (viewModel.registerTab) {
                         0    -> "Student record saved successfully."
                         1    -> "Faculty record saved successfully."
                         else -> "External visitor recorded. They can now time in from the Visit screen."
                     },
-                    color = TextMuted
+                    color     = TextMuted,
+                    textAlign = TextAlign.Center
                 )
-            }
+            },
+            confirmButton = {
+                Column(
+                    Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            viewModel.showSuccessDialog = false
+                            viewModel.resetFields()
+                            navController.navigate("home") {
+                                popUpTo("home") { inclusive = true }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors   = ButtonDefaults.buttonColors(containerColor = tabAccent),
+                        shape    = RoundedCornerShape(10.dp)
+                    ) { Text("Done") }
+                    TextButton(
+                        onClick  = { viewModel.showSuccessDialog = false; viewModel.resetFields() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Register another", color = TextMuted, fontSize = 13.sp)
+                    }
+                }
+            },
+            dismissButton = {}
         )
     }
 
@@ -589,20 +705,19 @@ fun RegisterScreen(navController: NavHostController) {
             dragHandle = {
                 Box(
                     Modifier
-                        .padding(vertical = 12.dp)
-                        .width(40.dp)
+                        .padding(vertical = 10.dp)
+                        .width(36.dp)
                         .height(4.dp)
                         .clip(RoundedCornerShape(2.dp))
                         .background(BorderColor)
                 )
             }
         ) {
-            // Fixed header
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-                    .padding(bottom = 12.dp)
+                    .padding(horizontal = 18.dp)
+                    .padding(bottom = 10.dp)
             ) {
                 Row(
                     Modifier.fillMaxWidth(),
@@ -614,18 +729,18 @@ fun RegisterScreen(navController: NavHostController) {
                             "Privacy Policy & Agreements",
                             color      = TextPrimary,
                             fontWeight = FontWeight.Bold,
-                            fontSize   = 18.sp
+                            fontSize   = 16.sp
                         )
                         Text(
                             "St. Bridget College Batangas — ITMSO",
                             color    = TextSub,
-                            fontSize = 12.sp
+                            fontSize = 11.sp
                         )
                     }
                     Box(
                         Modifier
-                            .size(32.dp)
-                            .clip(RoundedCornerShape(8.dp))
+                            .size(28.dp)
+                            .clip(RoundedCornerShape(7.dp))
                             .background(BorderColor)
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
@@ -635,25 +750,24 @@ fun RegisterScreen(navController: NavHostController) {
                     ) {
                         Icon(
                             Icons.Outlined.Close,
-                            contentDescription = null,
+                            null,
                             tint     = TextMuted,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(14.dp)
                         )
                     }
                 }
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(10.dp))
                 HorizontalDivider(color = BorderColor, thickness = 0.5.dp)
             }
 
-            // Scrollable content
             Column(
                 Modifier
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp)
-                    .padding(bottom = 48.dp)
+                    .padding(horizontal = 18.dp)
+                    .padding(bottom = 40.dp)
             ) {
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(6.dp))
 
                 listOf(
                     "1. Privacy and Data Protection" to
@@ -670,17 +784,15 @@ fun RegisterScreen(navController: NavHostController) {
                     PrivacyBlock(title, body)
                 }
 
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(16.dp))
 
                 Button(
-                    onClick  = { agreed = true; showPrivacy = false },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = tabAccent),
-                    shape  = RoundedCornerShape(12.dp)
+                    onClick  = { viewModel.agreed = true; showPrivacy = false },
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    colors   = ButtonDefaults.buttonColors(containerColor = tabAccent),
+                    shape    = RoundedCornerShape(12.dp)
                 ) {
-                    Text("I Understand & Agree.", fontWeight = FontWeight.SemiBold)
+                    Text("I understand & agree", fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -688,7 +800,7 @@ fun RegisterScreen(navController: NavHostController) {
 }
 
 // ─────────────────────────────────────────────
-//  REUSABLE: SECTION CARD
+//  SECTION CARD
 // ─────────────────────────────────────────────
 
 @Composable
@@ -700,25 +812,30 @@ fun RegSection(
     Column(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(12.dp))
             .background(Color(0xFF111827))
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .border(1.dp, Color(0xFF1E2D5A), RoundedCornerShape(12.dp))
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Box(
                 Modifier
                     .width(3.dp)
-                    .height(16.dp)
+                    .height(13.dp)
                     .clip(RoundedCornerShape(2.dp))
                     .background(accent)
             )
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(7.dp))
             Text(
                 title,
                 color      = Color(0xFFE0E8FF),
                 fontWeight = FontWeight.SemiBold,
-                fontSize   = 14.sp
+                fontSize   = 12.sp,
+                modifier   = Modifier.weight(1f)
             )
         }
         HorizontalDivider(color = Color(0xFF1E2D5A), thickness = 0.5.dp)
@@ -727,7 +844,7 @@ fun RegSection(
 }
 
 // ─────────────────────────────────────────────
-//  REUSABLE: FORM FIELD
+//  FORM FIELD
 // ─────────────────────────────────────────────
 
 @Composable
@@ -742,25 +859,20 @@ fun RegField(
     OutlinedTextField(
         value         = value,
         onValueChange = onValueChange,
-        label         = { Text(label, color = Color(0xFF6B7FC4), fontSize = 13.sp) },
-        placeholder   = { Text(placeholder, color = Color(0xFF4A5680), fontSize = 13.sp) },
+        label         = { Text(label, color = Color(0xFF6B7FC4), fontSize = 12.sp) },
+        placeholder   = { Text(placeholder, color = Color(0xFF4A5680), fontSize = 12.sp) },
         leadingIcon   = {
-            Icon(
-                icon,
-                contentDescription = null,
-                tint     = Color(0xFF6B7FC4),
-                modifier = Modifier.size(20.dp)
-            )
+            Icon(icon, null, tint = Color(0xFF6B7FC4), modifier = Modifier.size(18.dp))
         },
         singleLine = true,
         colors     = colors,
-        shape      = RoundedCornerShape(12.dp),
+        shape      = RoundedCornerShape(9.dp),
         modifier   = Modifier.fillMaxWidth()
     )
 }
 
 // ─────────────────────────────────────────────
-//  REUSABLE: PRIVACY BLOCK
+//  PRIVACY BLOCK
 // ─────────────────────────────────────────────
 
 @Composable
@@ -768,34 +880,34 @@ fun PrivacyBlock(title: String, desc: String) {
     Column(
         Modifier
             .fillMaxWidth()
-            .padding(vertical = 10.dp)
+            .padding(vertical = 8.dp)
     ) {
         Row(verticalAlignment = Alignment.Top) {
             Box(
                 Modifier
-                    .padding(top = 6.dp)
-                    .size(6.dp)
+                    .padding(top = 5.dp)
+                    .size(5.dp)
                     .clip(RoundedCornerShape(3.dp))
                     .background(Color(0xFF5C7CFA))
             )
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(8.dp))
             Column {
                 Text(
                     title,
                     color      = Color(0xFFE0E8FF),
                     fontWeight = FontWeight.SemiBold,
-                    fontSize   = 14.sp
+                    fontSize   = 13.sp
                 )
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(3.dp))
                 Text(
                     desc,
                     color      = Color(0xFF6B7FC4),
-                    fontSize   = 13.sp,
-                    lineHeight = 20.sp
+                    fontSize   = 12.sp,
+                    lineHeight = 18.sp
                 )
             }
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(6.dp))
         HorizontalDivider(color = Color(0xFF1E2D5A), thickness = 0.5.dp)
     }
 }
