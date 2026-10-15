@@ -225,7 +225,8 @@ fun AdminLogin(viewModel: AdminViewModel, navController: NavHostController) {
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Text(
-                            "Admin Portal",
+                            "Admin" +
+                                    "Portal",
                             color      = TextPrimary,
                             fontWeight = FontWeight.Bold,
                             fontSize   = 22.sp
